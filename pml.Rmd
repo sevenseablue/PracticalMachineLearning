@@ -1,0 +1,70 @@
+---
+title: "pml"
+author: "Dawei Wang"
+date: "Friday, August 22, 2014"
+output: html_document
+---
+
+load data from training csv
+
+```{r}
+tdata <- read.csv("f:/data/practicalml/pml-training.csv")
+dim(tdata)
+```
+
+filter the NA columns and the timestamp columns which unrelates the prediction.
+
+```{r}
+library(caret)
+t1 <- tdata[,-grep("^X|timestamp|^min|^max|^var|^avg|^stddev|^amplitude|^kurtosis|^skewness|^new_window", names(tdata))]
+```
+
+split data into training, testing set.
+
+```{r}
+inTrain <- createDataPartition(y=t1$class, p=0.75, list=FALSE)
+training <- t1[inTrain,]
+testing <- t1[-inTrain,]
+dim(training)
+dim(testing)
+```
+
+use randomForest cross validation to see the accuracy of the method randomforest.
+
+```{r}
+library(randomForest)
+mod1 <- rfcv(t1[,-grep("classe",names(t1))], t1$classe,cv.fold=5)
+```
+
+by the plot error.cv vs n.var, find rf is 100% accuracy when n.var is 8
+
+```{r}
+with(mod1, plot(n.var, error.cv, log="x", type="o", lwd=2))
+```
+
+so the randomForest is OK.
+use the method randomForest to fit a model predicting the activity quality from the activity monitor
+
+```{r}
+modFit <- randomForest(classe ~ ., data=training, importance=TRUE, proximity = TRUE)
+```
+
+expected training data accuracy 100%, get the real accuracy 100%
+
+```{r}
+confusionMatrix(predict(modFit, training), training$classe)
+```
+
+expected testing data accuracy 100%, get the real accuracy 99.8%
+
+```{r}
+testingPred <- predict(modFit, testing)
+confusionMatrix(testingPred, testing$classe)
+```
+
+apply the modFit to the testing.csv data, submit the answer to the course, get all of the 20 questions OK, and the accuracy is 100%
+
+```{r}
+testing <- read.csv("f:/data/practicalml/pml-testing.csv")
+testingPred <- predict(modFit, testing)
+```
